@@ -1,4 +1,4 @@
-FROM debian:bullseye-slim AS build
+FROM debian:bookworm-slim AS build
 
 RUN apt-get update \
     && apt-get install -y build-essential libqt5core5a libqt5sql5 libqt5network5 qtbase5-dev qt5-qmake
@@ -6,7 +6,7 @@ RUN apt-get update \
 COPY src /src
 RUN cd src && qmake && make
 
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 
 RUN apt-get update \
     && apt-get install -y ca-certificates libqt5core5a libqt5sql5 libqt5network5 \
