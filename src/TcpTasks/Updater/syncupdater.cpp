@@ -13,7 +13,7 @@ SyncUpdater::SyncUpdater(const QSharedPointer<CoreObject> &coreObject)
 
 void SyncUpdater::mergeExternalList()
 {
-    const ExternalListSettings &list = _coreObject->Settings.ExternalListSettings;
+    const auto &list = _coreObject->Settings.ExternalListSettings;
     const QUrl url(list.url);
 
     if ( ! url.isValid() || (url.scheme() != "http" and url.scheme() != "https") )
