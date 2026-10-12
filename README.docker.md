@@ -32,6 +32,10 @@ runtime, create some directories on the host to hold these files.
      the configuration file appropriately.
 3. Copy file `SupportedGames.json` to `/var/lib/masterserver/data/`
 
+The settings file is required and must have non-empty `PublicDetails` values.
+Test the container without a restart policy until the configuration is valid;
+otherwise Docker will repeatedly restart the process after it exits.
+
 ## Run
 
 After directories and configuration have been created, run the service as a 

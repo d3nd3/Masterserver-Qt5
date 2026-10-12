@@ -56,10 +56,12 @@ bool initDatabase(const QString applicationPath)
     }
 
     // relevant tables do not exist. ask to generate.
-    logPrimitive() << "The database table do not exist. Do you want to generate these? [y/N]" << endl;
+    const bool autoCreate = qgetenv("AUTO_CREATE_DB").toLower() == "y";
+    if ( ! autoCreate )
+        logPrimitive() << "The database table do not exist. Do you want to generate these? [y/N]" << endl;
 
     // if no, do not proceed.
-    if ( ! QTextStream(stdin).readLine().startsWith("y") )
+    if ( ! autoCreate and ! QTextStream(stdin).readLine().startsWith("y") )
     {
         // do not generate. failed to load database.
         return false;
