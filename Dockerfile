@@ -9,7 +9,7 @@ RUN cd src && qmake && make
 FROM debian:bullseye-slim
 
 RUN apt-get update \
-    && apt-get install -y libqt5core5a libqt5sql5 libqt5network5 \
+    && apt-get install -y ca-certificates libqt5core5a libqt5sql5 libqt5network5 \
     && apt-get autoclean
 
 RUN mkdir -p /masterserver/bin /masterserver/data /masterserver/log \

@@ -31,18 +31,20 @@ void SyncUpdater::mergeExternalList()
     QNetworkRequest request(url);
     QNetworkReply *reply = _networkManager.get(request);
     const QString gameName = list.gameName;
+    const QString sourceUrl = list.url;
 
-    connect(reply, &QNetworkReply::finished, this, [this, reply, gameName]
+    connect(reply, &QNetworkReply::finished, this, [this, reply, gameName, sourceUrl]
     {
         if ( reply->error() != QNetworkReply::NoError )
         {
-            _coreObject->Log.logEvent("warning", QStringLiteral("unable to download external server list: %1")
-                                      .arg(reply->errorString()));
+            _coreObject->Log.logEvent("warning", QStringLiteral("unable to download external server list %1: %2")
+                                      .arg(sourceUrl, reply->errorString()));
             reply->deleteLater();
             return;
         }
 
         int merged = 0;
+        int parsed = 0;
         QSqlDatabase::database().transaction();
 
         // The first two columns are IP and gamespy port; ignore hostport and all remaining fields.
@@ -59,13 +61,16 @@ void SyncUpdater::mergeExternalList()
             if ( ! validPort || gamespyPort == 0 || QHostAddress(ip).isNull() )
                 continue;
 
+            parsed++;
             if ( updateServer(ip, gamespyPort, gameName, false, false) ||
                  insertServer(ip, gamespyPort, gameName, false) )
                 merged++;
         }
 
         QSqlDatabase::database().commit();
-        _coreObject->Log.logEvent("sync", QStringLiteral("merged %1 servers from external list").arg(merged));
+        _coreObject->Log.logEvent("sync", QStringLiteral("[SYNC-TRACE] external list %1: rows=%2 parsed=%3 merged=%4 game=%5")
+                                  .arg(sourceUrl, QString::number(lines.size()), QString::number(parsed),
+                                       QString::number(merged), gameName));
         reply->deleteLater();
     });
 }
