@@ -59,6 +59,12 @@ void writeSettings (const QString &settingsFilePath)
     }
     settingsFile.endArray();
 
+    // external server list
+    settingsFile.setValue("ExternalList/DoMerge",         settings.ExternalListSettings.doMerge);
+    settingsFile.setValue("ExternalList/URL",             settings.ExternalListSettings.url);
+    settingsFile.setValue("ExternalList/GameName",        settings.ExternalListSettings.gameName);
+    settingsFile.setValue("ExternalList/MergeInterval_s", settings.ExternalListSettings.mergeInterval_s);
+
     // server checker (udp client ticker)
     settingsFile.setValue("Checker/DoCheck",                settings.CheckerSettings.doCheck);
     settingsFile.setValue("Checker/GetExtendedInformation", settings.CheckerSettings.getExtendedInfo);

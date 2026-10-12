@@ -92,6 +92,12 @@ SettingStructure loadSettings (const QString &applicationPath)
     }
     settingsFile.endArray();
 
+    // external server list
+    settings.ExternalListSettings.doMerge         = settingsFile.value("ExternalList/DoMerge",         settings.ExternalListSettings.doMerge).toBool();
+    settings.ExternalListSettings.url             = settingsFile.value("ExternalList/URL",             settings.ExternalListSettings.url).toString();
+    settings.ExternalListSettings.gameName        = settingsFile.value("ExternalList/GameName",        settings.ExternalListSettings.gameName).toString().toLower();
+    settings.ExternalListSettings.mergeInterval_s = settingsFile.value("ExternalList/MergeInterval_s", settings.ExternalListSettings.mergeInterval_s).toInt();
+
     // server checker (udp client ticker)
     settings.CheckerSettings.doCheck                = settingsFile.value("Checker/DoCheck",                settings.CheckerSettings.doCheck).toBool();
     settings.CheckerSettings.getExtendedInfo        = settingsFile.value("Checker/GetExtendedInformation", settings.CheckerSettings.getExtendedInfo).toBool();
@@ -120,6 +126,14 @@ SettingStructure loadSettings (const QString &applicationPath)
         if ( settings.SyncerSettings.syncGames.isEmpty() )   throw QString("Syncer/SyncGames");
         if ( settings.SyncerSettings.syncInterval_s <= 0 )   throw QString();
         if (parseError >= 0)                                 throw QStringLiteral("Syncer/SyncServer[%1]").arg(QString::number(parseError+1));
+
+        // external server list
+        if ( settings.ExternalListSettings.mergeInterval_s <= 0 )
+            throw QString("ExternalList/MergeInterval_s");
+        if ( settings.ExternalListSettings.doMerge and settings.ExternalListSettings.url.isEmpty() )
+            throw QString("ExternalList/URL");
+        if ( settings.ExternalListSettings.doMerge and settings.ExternalListSettings.gameName.isEmpty() )
+            throw QString("ExternalList/GameName");
 
         // server checker / udp client
         if ( settings.CheckerSettings.timeServerInterval_ms < 10 )  throw QString("Checker/ServerCheckInterval_ms");

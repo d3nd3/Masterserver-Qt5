@@ -3,6 +3,7 @@
 
 #include <QTimer>
 #include <QHostInfo>
+#include <QNetworkAccessManager>
 
 #include "Core/CoreObject/coreobject.h"
 #include "Database/Common/commonactions.h"
@@ -22,9 +23,13 @@ private:
     // update/ticker timer
     QTimer _updaterTimer;
     QTimer _syncTicker;
+    QTimer _externalListTimer;
+    QNetworkAccessManager _networkManager;
 
     // index
     int _syncIndex = 0;
+
+    void mergeExternalList();
 
 private slots:
     void onSyncTickerAction();

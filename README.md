@@ -102,6 +102,20 @@ SyncGames=all
 SyncInterval_s=1800
 ```
 
+#### External Server List
+The server list at `URL` can be merged into the local list periodically. Only the
+IP and GameSpy port are imported; the `GameName` is assigned to each imported
+server and the source's host port and other fields are ignored.
+```
+[ExternalList]
+DoMerge=true
+URL=https://sof1.megalag.org/text/server-list.txt
+GameName=sof
+MergeInterval_s=300
+```
+Synchronization diagnostics are tagged `[SYNC-TRACE]`; search the log for the
+server IP and GameSpy port to follow heartbeat acceptance, export, and import.
+
 #### Checker
 To make sure that all server info is up to date, it is possible to query all game servers periodically. With `DoCheck` in the `[Checker]` you enable retrieving information every `CycleInterval_s` seconds. With `GetExtendedInformation` you can opt to retrieve detailed information such as active mutators, current players and teams.
 

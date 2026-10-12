@@ -40,6 +40,8 @@ void SyncClient::onSyncRead()
                 .arg(_coreObject->Settings.SyncerSettings.syncGames,
                      _coreObject->masterserverIdentity);
         _tcpSocket.write(request.toLatin1());
+        _coreObject->Log.logEvent("sync", QStringLiteral("[SYNC-TRACE] requested games=%1 from %2")
+                                  .arg(_coreObject->Settings.SyncerSettings.syncGames, _clientLabel));
 
         // all relevant information received. clear buffer for next interaction
         _rxBuffer = "";
@@ -53,7 +55,9 @@ void SyncClient::onSyncRead()
         receiveData.remove("final"); // prevent "final" from registering as gamename
 
         // count number of addresses for logging
-        int totalServerCount = 0;
+        int validServerCount = 0;
+        _coreObject->Log.logEvent("sync", QStringLiteral("[SYNC-TRACE] received sync payload from %1: games=%2 keys=%3")
+                                  .arg(_clientLabel, QString::number(receiveData.count()), receiveData.keys().join(",")));
 
         // use transaction for SQLite
         QSqlDatabase::database().transaction();
@@ -79,20 +83,35 @@ void SyncClient::onSyncRead()
 
                 // (address cont.)
                 QStringList    address    = addr.split(':');
-                unsigned short remotePort = address.takeLast().toUShort();
+                bool           validPort  = false;
+                unsigned short remotePort = address.takeLast().toUShort(&validPort);
                 QString        remoteAddr = address.join(":"); // IPv4 has only 1 element, IPv6 has 4 that need joining with ':'
 
                 // valid address?
-                if ( ! QHostAddress(remoteAddr).isNull() and remotePort > 0 )
+                if ( ! QHostAddress(remoteAddr).isNull() and validPort and remotePort > 0 )
                 {
                     // if it does not exist in the db, insert
                     if ( ! updateSyncedServer(remoteAddr, remotePort) )
                     {
                         // add
-                        insertServer(remoteAddr, remotePort, gamename, false);
+                        const bool inserted = insertServer(remoteAddr, remotePort, gamename, false);
+                        _coreObject->Log.logEvent(inserted ? "sync" : "warning",
+                                                  QStringLiteral("[SYNC-TRACE] %1 synced server %2:%3 game=%4 from %5")
+                                                  .arg(inserted ? QStringLiteral("inserted") : QStringLiteral("failed to insert"),
+                                                       remoteAddr, QString::number(remotePort), gamename, _clientLabel));
                     }
+                    else
+                    {
+                        _coreObject->Log.logEvent("sync", QStringLiteral("[SYNC-TRACE] refreshed synced server %1:%2 game=%3 from %4")
+                                                  .arg(remoteAddr, QString::number(remotePort), gamename, _clientLabel));
+                    }
+                    validServerCount++;
                 }
-                totalServerCount++;
+                else
+                {
+                    _coreObject->Log.logEvent("warning", QStringLiteral("[SYNC-TRACE] rejected malformed synced address '%1' for game=%2 from %3")
+                                              .arg(addr, gamename, _clientLabel));
+                }
             } // has next address
         } // has next game
 
@@ -101,7 +120,7 @@ void SyncClient::onSyncRead()
 
         // report in log
         _coreObject->Log.logEvent("sync", QStringLiteral("received %1 servers in %2 games from %3")
-                                  .arg( QString::number(totalServerCount),
+                                  .arg( QString::number(validServerCount),
                                         QString::number(receiveData.count()),
                                         _clientLabel)
                                   );

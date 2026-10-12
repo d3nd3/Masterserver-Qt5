@@ -61,8 +61,9 @@ void Core::run()
     if ( _coreObject->Settings.BeaconServerSettings.doUplink )
         _udpBeaconServer->uplink();
 
-    // syncing with other masterservers
-    if ( _coreObject->Settings.SyncerSettings.doSync )
+    // syncing with other masterservers and external server lists
+    if ( _coreObject->Settings.SyncerSettings.doSync ||
+         _coreObject->Settings.ExternalListSettings.doMerge )
         _syncUpdater->scheduleUpdater();
 
     // server checker

@@ -74,6 +74,21 @@ struct SettingStructure
     }
     SyncerSettings;
 
+    // external server list settings
+    struct ExternalListSettings
+    {
+        // merge the external list by default
+        bool doMerge = true;
+
+        // source list and game name assigned to imported servers
+        QString url = "https://sof1.megalag.org/text/server-list.txt";
+        QString gameName = "sof";
+
+        // time between list downloads
+        int mergeInterval_s = 300;
+    }
+    ExternalListSettings;
+
     // checker settings (query all individual servers to determine their state)
     struct CheckerSettings
     {

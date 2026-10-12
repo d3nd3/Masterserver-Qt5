@@ -152,6 +152,8 @@ void ListenClientHandler::onListenClientRead()
         {
             // kick client after unsuccessful validation
             _coreObject->Log.logEvent("secure", QStringLiteral("%1 requested to sync for %2 without validating").arg(_clientLabel, receiveData.value("gamename", "")) );
+            _coreObject->Log.logEvent("warning", QStringLiteral("[SYNC-TRACE] rejected unvalidated sync request from %1")
+                                      .arg(_clientLabel));
             this->disconnect();
             return;
         }
@@ -163,6 +165,8 @@ void ListenClientHandler::onListenClientRead()
             // msid match -- skip syncing
             _tcpSocket->write("\\final\\");
             _coreObject->Log.logEvent("list", QStringLiteral("skipping sync for self at %1").arg(_clientLabel) );
+            _coreObject->Log.logEvent("sync", QStringLiteral("[SYNC-TRACE] rejected sync request from %1: matching msid")
+                                      .arg(_clientLabel));
             this->disconnect();
             return;
         }
@@ -185,8 +189,16 @@ void ListenClientHandler::onListenClientRead()
                 {
                     gamenameList.append(rawGamename);
                 }
+                else
+                {
+                    _coreObject->Log.logEvent("warning", QStringLiteral("[SYNC-TRACE] ignored unsupported requested game=%1 from %2")
+                                              .arg(rawGamename, _clientLabel));
+                }
             }
         }
+
+        _coreObject->Log.logEvent("sync", QStringLiteral("[SYNC-TRACE] serving sync request from %1: request=%2 games=%3")
+                                  .arg(_clientLabel, receiveData.value("sync", ""), gamenameList.join(",")));
 
         // get compiled sync list for all requested gamenames
         QByteArray writeBuffer = compileSyncList(

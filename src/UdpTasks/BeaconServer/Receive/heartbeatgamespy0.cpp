@@ -16,11 +16,16 @@ void BeaconServer::processHeartbeatGamespy0(const QNetworkDatagram &datagram,
      */
     if ( receiveData.contains("heartbeat") )
     {
+        const QString rawPort = receiveData.value("heartbeat", "0");
+        const QString gamename = receiveData.value("gamename", "unknown");
+        _coreObject->Log.logEvent("sync", QStringLiteral("[SYNC-TRACE] heartbeat from %1: sourcePort=%2 game=%3 heartbeatPort=%4")
+                                  .arg(senderAddress, QString::number(senderPort), gamename, rawPort));
+
         // store heartbeat and request authentication
         UdpData newBeacon;
         newBeacon.ip        = senderAddress;
-        newBeacon.port      = receiveData.value("heartbeat", "0").toUShort();
-        newBeacon.gamename  = receiveData.value("gamename", "unknown");
+        newBeacon.port      = rawPort.toUShort();
+        newBeacon.gamename  = gamename;
 
         // sanity check: known game(name)
         if ( _coreObject->SupportedGames.contains( newBeacon.gamename ) )
@@ -37,6 +42,8 @@ void BeaconServer::processHeartbeatGamespy0(const QNetworkDatagram &datagram,
                 {
                     _coreObject->Log.logEvent("heartbeat", QStringLiteral("%1 invalid port for %2")
                                    .arg(newBeacon.ip, newBeacon.gamename) );
+                    _coreObject->Log.logEvent("warning", QStringLiteral("[SYNC-TRACE] rejected heartbeat %1: invalid port %2 for game %3")
+                                              .arg(senderAddressLabel, rawPort, newBeacon.gamename));
                     return;
                 }
             }
@@ -45,6 +52,8 @@ void BeaconServer::processHeartbeatGamespy0(const QNetworkDatagram &datagram,
         {
             _coreObject->Log.logEvent("unsupported", QStringLiteral("%1:%2 for unsupported game %3")
                            .arg(newBeacon.ip, QString::number(newBeacon.port), newBeacon.gamename) );
+            _coreObject->Log.logEvent("warning", QStringLiteral("[SYNC-TRACE] rejected heartbeat %1: unsupported game %2")
+                                      .arg(senderAddressLabel, newBeacon.gamename));
             return;
         }
 
@@ -55,6 +64,8 @@ void BeaconServer::processHeartbeatGamespy0(const QNetworkDatagram &datagram,
             // log update
             _coreObject->Log.logEvent("heartbeat", QStringLiteral("%1:%2 for %3")
                     .arg(newBeacon.ip, QString::number(newBeacon.port), newBeacon.gamename) );
+            _coreObject->Log.logEvent("sync", QStringLiteral("[SYNC-TRACE] stored existing server %1:%2 game=%3; dt_updated refreshed")
+                                      .arg(newBeacon.ip, QString::number(newBeacon.port), newBeacon.gamename));
 
             // no further tasks for this datagram
             return;
@@ -63,7 +74,11 @@ void BeaconServer::processHeartbeatGamespy0(const QNetworkDatagram &datagram,
         // else:
 
         // add to database
-        insertServer(newBeacon.ip, newBeacon.port, newBeacon.gamename, true);
+        const bool inserted = insertServer(newBeacon.ip, newBeacon.port, newBeacon.gamename, true);
+        _coreObject->Log.logEvent(inserted ? "sync" : "warning",
+                                  QStringLiteral("[SYNC-TRACE] %1 new server %2:%3 game=%4")
+                                  .arg(inserted ? QStringLiteral("stored") : QStringLiteral("failed to store"),
+                                       newBeacon.ip, QString::number(newBeacon.port), newBeacon.gamename));
 
         // log type "uplink" for first heartbeat. from now on, this server is logged with type "heartbeat"
         _coreObject->Log.logEvent("new", QStringLiteral("%1:%2 for %3")
@@ -120,6 +135,8 @@ void BeaconServer::processHeartbeatGamespy0(const QNetworkDatagram &datagram,
             // server authenticated - log and add to database
             _coreObject->Log.logEvent("secure", QStringLiteral("successful validate from %1:%2 for %3")
                            .arg(valBeacon.ip, QString::number(valBeacon.port),valBeacon.gamename) );
+            _coreObject->Log.logEvent("sync", QStringLiteral("[SYNC-TRACE] validation succeeded for %1:%2 game=%3")
+                                      .arg(valBeacon.ip, QString::number(valBeacon.port), valBeacon.gamename));
 
             // update the existing entry that was already added in the initial heartbeat
             updateServer(valBeacon.ip, valBeacon.port, valBeacon.gamename, false, true);
@@ -133,6 +150,8 @@ void BeaconServer::processHeartbeatGamespy0(const QNetworkDatagram &datagram,
             updateServer(valBeacon.ip, valBeacon.port, valBeacon.gamename, false, false);
             _coreObject->Log.logEvent("secure", QStringLiteral("failed validate from %1:%2 for %3")
                            .arg(valBeacon.ip, QString::number(valBeacon.port),valBeacon.gamename) );
+            _coreObject->Log.logEvent("warning", QStringLiteral("[SYNC-TRACE] validation failed for %1:%2 game=%3; row remains heartbeat-updated")
+                                      .arg(valBeacon.ip, QString::number(valBeacon.port), valBeacon.gamename));
             _coreObject->Log.logEvent("secure", QStringLiteral("secure: '%1', gamename: '%2', validate: '%3', expected: '%4'")
                                         .arg(valBeacon.secure, valBeacon.gamename, receiveData.value("validate", "null"), authResult.validate ));
         }
@@ -181,6 +200,8 @@ void BeaconServer::processHeartbeatGamespy0(const QNetworkDatagram &datagram,
     }
 
     // received another type of query?
+    _coreObject->Log.logEvent("warning", QStringLiteral("[SYNC-TRACE] ignored UDP packet from %1: keys=%2")
+                              .arg(senderAddressLabel, receiveData.keys().join(",")));
     _coreObject->Log.logEvent("unknown", QStringLiteral("received unknown udp uplink %1 from %2")
                    .arg(receiveBuffer, senderAddress) );
 }
