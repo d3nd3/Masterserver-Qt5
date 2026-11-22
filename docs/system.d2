@@ -1,0 +1,120 @@
+# 333networks MasterServer (Qt5) — system overview (source of truth).
+# Render:  scripts/render-diagram.sh  (svg: light+dark, png: dark, for gpm desktop)
+# Colours come from the d2 theme, not hardcoded fills, so both light and dark render legibly.
+# Rule: if a service, data store or external process changes, update this file in the
+# same commit and re-render.
+
+title: |md
+  **333networks MasterServer (Qt5/C++)** — UDP heartbeats in, TCP server lists out, one SQLite file in the middle
+| {near: top-center}
+
+direction: right
+grid-columns: 2
+grid-rows: 2
+
+entry: Entry points {
+  direction: down
+  main: `main.cpp` — `QCoreApplication`, then `Core(applicationDirPath)`
+  boot: `Core::run()` — identity → settings → database → games → logger → sockets → timers
+  udp: UDP `:27900` — one socket for heartbeats, queries and replies
+  tcp: TCP `:28900` — one connection per list or sync request
+  tick: `QTimer` schedule — uplink 60 s · sync 1800 s · checker 250 ms · maintenance 60 s
+}
+
+ext: External {
+  direction: down
+  servers: Game servers — send a heartbeat to UDP `:27900` about once a minute
+  clients: Game clients — TCP challenge, then a list request
+  peers: Peer masterservers — same protocol, in both directions
+  weblist: `sof1.megalag.org/text/server-list.txt` — IP + GameSpy port rows {
+    shape: cloud
+  }
+  docker: `333masterserver` image — `AUTO_CREATE_DB=y` skips the prompt {
+    shape: cloud
+  }
+}
+
+core: Core · one Qt event loop, five services {
+  direction: down
+  beacon: `BeaconServer` — parse a heartbeat, insert or refresh the row, challenge a new beacon
+  reply: `replyQuery` — answer `secure`, `basic`, `info`, `rules`, `status`, `echo` aimed at the master itself
+  listener: `ListenServer` → `ListenClientHandler` — validate first, then serve `list` or `sync`
+  compile: `compileServerlist` / `compileSyncList` — live rows to `ip:port` text or enctype2 bytes
+  syncer: `SyncUpdater` — ticker over configured peers plus the external HTTP list merge
+  pull: `SyncClient` — dial a peer, answer its challenge, request a sync, upsert what comes back
+  checker: `StatusChecker` — poll every live row for `info`/`status`, store serverinfo and players
+  maint: `Maintenance` — refresh per-game stats, prune stale beacons, orphaned info and players
+  proto: `GameSpy0` — key/value parse, `enctype2` cipher, `validate` challenge arithmetic
+  over: `overrides.cpp` — per-game key, gamename and validate exceptions
+}
+
+state: State {
+  direction: down
+  db: `data/masterserver.db` — SQLite in WAL mode, one writer {
+    direction: down
+    serverlist: `serverlist` — ip, queryport, gamename, auth/direct flags, 4 timestamps {
+      shape: cylinder
+    }
+    serverinfo: `serverinfo` — host, map, counts and rules from the last check {
+      shape: cylinder
+    }
+    playerinfo: `playerinfo` — one row per player the checker saw {
+      shape: cylinder
+    }
+    gameinfo: `gameinfo` — per-gamename direct and total counts {
+      shape: cylinder
+    }
+    version: `versioninfo` — schema version, refuses a stale database {
+      shape: cylinder
+    }
+  }
+  games: `data/SupportedGames.json` — gamename → cipher + default port
+  cfg: `data/MasterServer-Settings.ini` — ports, TTL, peers, merge URL
+  log: `log/MasterServer-Qt-<version>-<date>.log` — cycled, per-type suppression
+  mem: in-process only — `_beaconList` pending challenges, checker buffers
+}
+
+
+entry.main -> entry.boot
+entry.udp -> core.beacon
+entry.tcp -> core.listener
+entry.tick -> core.syncer
+entry.tick -> core.checker
+entry.tick -> core.maint
+entry.boot -> state.cfg
+entry.boot -> state.games
+
+core.beacon -> core.proto
+core.listener -> core.proto
+core.checker -> core.proto
+core.proto -> core.over
+core.beacon -> state.db.serverlist
+core.listener -> core.compile
+core.compile -> state.db.serverlist
+core.syncer -> core.pull
+core.pull -> state.db.serverlist
+core.checker -> state.db.serverinfo
+core.checker -> state.db.playerinfo
+core.maint -> state.db.gameinfo
+core.maint -> state.db.serverlist
+core.reply -> state.db.gameinfo
+
+core.beacon -> ext.servers: "reply to a query"
+core.beacon -> ext.peers: "uplink heartbeat"
+core.compile -> ext.clients: "validated list"
+core.pull -> ext.peers: "pull roster"
+core.syncer -> ext.weblist: "GET every 300 s"
+ext.docker -> entry.main: "starts the binary"
+
+classes: {
+  store: {style.stroke: "#1c7ed6"; style.stroke-width: 2}
+  ext: {style.stroke: "#7048e8"; style.stroke-dash: 3}
+  boot: {style.stroke: "#0b7285"; style.stroke-width: 2}
+}
+
+state.games.class: store
+state.cfg.class: store
+state.log.class: store
+ext.weblist.class: ext
+ext.docker.class: ext
+entry.boot.class: boot

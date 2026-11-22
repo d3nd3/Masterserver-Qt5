@@ -1,6 +1,8 @@
 # 333Networks Master Server Qt5/C++
 ---
 
+Prefer pictures? Start with **[HUMANS.md](HUMANS.md)**.
+
 ## DESCRIPTION
 Qt5/C++ implementation of the 333networks masterserver for the Gamespy v0 protocol. The
 software receives UDP beacons from game servers and provides TCP server lists for game clients. The masterserver queries other masterservers to synchronise lists and checks individual game servers for additional display information.
